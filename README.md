@@ -28,10 +28,13 @@ The watch uses Three.js 0.186.1 `WebGPURenderer` with WebGL2 fallback. Add `?web
 
 The default environment is Poly Haven's [Studio Small 09](https://polyhaven.com/a/studio_small_09) by Sergej Majboroda (CC0). The 2K HDR file is bundled locally (2048 × 1024, 6.31 MB), with its download URL and verified checksums in `watch/assets/studio_small_09.json`.
 
-Use **Studio 09 HDRI / Original** above the watch to compare the lighting. This choice is remembered separately from watch preferences. The cream background stays visible; the HDRI provides environment lighting and reflections. If the HDRI cannot load, the original studio is used and the lighting status reports it.
+Use **Studio 09 HDRI / Original** above the watch to compare the lighting. The separate **Background: Cream / HDRI studio** row chooses whether the actual panorama is visible behind the watch. Both choices are remembered separately from watch preferences. The panorama follows the same 180-degree rotation as the HDRI lighting. A light caption scrim keeps the film text readable. If the HDRI cannot load, the original studio and cream background are used and the lighting status reports it.
 
 - [HDRI showcase](http://127.0.0.1:5173/?showcase=1&lighting=hdri)
 - [Original lighting](http://127.0.0.1:5173/?showcase=1&lighting=original)
+- [Visible HDRI background](http://127.0.0.1:5173/?showcase=1&lighting=hdri&background=hdri)
+
+[Preview the HDRI background](docs/hdri-background.png).
 
 The trial rotates the panorama 180 degrees and uses environment intensity 1 with modest supporting fill/key/rim lights. The original profile restores the previous room map and lighting values. `npm run compare:lighting` captures both profiles at identical times and camera positions across steel, gold, and graphite; results go to `out/lighting/`.
 
@@ -93,6 +96,9 @@ npm run capture -- sheet --webgl --out out/webgl.png
 
 # Capture the previous lighting profile explicitly
 npm run capture -- sheet --lighting original --out out/original.png
+
+# Render the visible studio panorama behind the watch
+npm run capture -- stills --background hdri --times 3.115 --out out/background
 ```
 
 Captures use the same scene, fixed UTC showcase clock, and absolute-time camera/button evaluation as the preview. Seek order does not change the result. `?capture=1&t=8.5` opens a paused composition with playback controls hidden. Captures are repeatable within the tested browser/backend; fonts and GPU output can vary between platforms. The exporter captures browser frames at fixed times, without temporal supersampling or motion blur. Output goes into ignored `out/`.

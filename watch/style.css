@@ -4,6 +4,13 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 
 #inscription{font-size:11px;letter-spacing:.5px;font-weight:500}
+.lighting-tools .background-options{display:flex;width:max-content;margin:6px 0 0 auto}.lighting-tools .background-label{display:inline;margin:0 7px;align-self:center;font-size:8px;color:#68755b;letter-spacing:.5px}
+.hdri-background.showcase-active #showcase-overlay{background:linear-gradient(90deg,#eeeae2f2 0%,#eeeae2e6 25%,transparent 36%)}
+.hdri-background.showcase-active .showcase-copy{max-width:29%}
+.hdri-background.tutorial-active #showcase-overlay{background:linear-gradient(90deg,#eeeae2f2 0%,#eeeae2e6 32%,transparent 45%)}
+.hdri-background .showcase-top #showcase-chapter,.hdri-background #showcase-exit{background:#eeeae2e6;border-radius:5px;padding:8px 10px;color:#44513a}
+.hdri-background .stage-caption{background:#eeeae2db;padding:7px;border-radius:4px}
+@media(max-width:760px){.hdri-background.showcase-active .showcase-copy{max-width:88%}.hdri-background.showcase-active #showcase-overlay{background:linear-gradient(to bottom,#eeeae2 0%,#eeeae2ed 9%,transparent 18%,transparent 58%,#eeeae2ed 77%,#eeeae2 100%)}.hdri-background.tutorial-active #showcase-overlay{background:linear-gradient(to bottom,#eeeae2 0%,#eeeae2ed 9%,transparent 18%,transparent 43%,#eeeae2f5 57%,#eeeae2 100%)}}
 .lighting-tools{position:absolute;top:24px;right:20px;text-align:right;z-index:6}.lighting-tools>div{display:inline-flex;gap:3px;padding:4px;border:1px solid #cdd3c4;border-radius:22px;background:#f3f2e9eb}.lighting-tools button{border:0;border-radius:18px;background:none;padding:8px 13px;font-size:10px}.lighting-tools button[aria-pressed="true"]{background:#45553b;color:#fff}.lighting-tools button:disabled{opacity:.5;cursor:wait}.lighting-tools span{display:block;font-size:8px;color:#78816d;margin:7px 9px 0;letter-spacing:.4px}.showcase-active .lighting-tools{top:90px;right:4%}.capture-mode .lighting-tools{display:none}
 @media(max-width:760px){.lighting-tools{top:30px;right:6%}.showcase-active .lighting-tools{top:102px;right:6%}.lighting-tools button{font-size:9px;padding:7px 9px}.lighting-tools span{font-size:7px}}
 

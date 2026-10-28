@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {mkdir, writeFile} from 'node:fs/promises';
 import {openBrowser, openWatch} from './browser.mjs';
 import {startServer} from './serve.mjs';
 
 const {server, url} = await startServer({port: 0});
 let browser;
+const imageHash=bytes=>createHash('sha256').update(bytes).digest('hex');
 try {
   browser = await openBrowser();
   await mkdir('out/verification', {recursive: true});
@@ -25,7 +27,7 @@ try {
   assert.equal((await render(8.5)).finish, 'gold');
   assert.equal((await render(11)).finish, 'dark');
   await render(6);
-  assert.deepEqual(await page.screenshot(), first, 'The same time must produce the same image after seeking');
+  assert.equal(imageHash(await page.screenshot()),imageHash(first), 'The same time must produce the same image after seeking');
   await page.evaluate(() => window.secondShowcase.start({time: 14.95, playing: true}));
   await page.waitForFunction(() => !window.secondShowcase.sample().playing);
   assert.equal((await page.evaluate(() => window.secondShowcase.sample())).time, 15);
@@ -51,13 +53,14 @@ try {
   assert.deepEqual((({hour,minute,enabled})=>({hour,minute,enabled}))((await sampleTutorial(29.5)).alarm),{hour:8,minute:1,enabled:true});
   await sampleTutorial(29.5);const alarmImage=await tutorial.page.screenshot();
   await sampleTutorial(46.5);assert.equal((await sampleTutorial(43.5)).stopwatch,4000);
-  await sampleTutorial(29.5);assert.deepEqual(await tutorial.page.screenshot(),alarmImage);
+  await sampleTutorial(29.5);assert.equal(imageHash(await tutorial.page.screenshot()),imageHash(alarmImage));
   const anchorState=await sampleTutorial(24.8);
   const ring=tutorial.page.locator('[data-button="adjust"] .button-ring');
   assert.ok(Math.abs(Number(await ring.getAttribute('cx'))-anchorState.buttons.adjust.x)<.01);
   assert.ok(Math.abs(Number(await ring.getAttribute('cy'))-anchorState.buttons.adjust.y)<.01);
   await tutorial.page.screenshot({path:'out/verification/tutorial-desktop.png'});
   assert.deepEqual(tutorial.errors,[]);console.log('Tutorial: real 3D button picking, time setting, alarm, callout anchors, stopwatch and repeatable captures passed');
+  await tutorial.page.close();
   const fallback = await openWatch(browser, url, {query: 'capture=1&webgl=1'});
   const fallbackState = await fallback.page.evaluate(() => window.secondShowcase.renderAt(8.5));
   assert.equal(fallbackState.renderer, 'WebGL2');assert.equal(fallbackState.finish, 'gold');
@@ -84,6 +87,35 @@ try {
   assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.profile,'original');
   await page.locator('[data-lighting="hdri"]').click();
   assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.profile,'hdri');
+  await page.locator('[data-background="hdri"]').click();
+  assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.background,'hdri');
+  await page.reload();await page.waitForFunction(()=>window.secondShowcase?.ready);
+  assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.background,'hdri');
+  await page.evaluate(()=>window.secondShowcase.renderAt(3.115));
+  const studioImage=await page.screenshot({path:'out/verification/background-hdri.png'});
+  await page.evaluate(()=>window.secondShowcase.setBackground('cream'));
+  await page.evaluate(()=>window.secondShowcase.renderAt(3.115));
+  assert.notEqual(imageHash(await page.screenshot()),imageHash(studioImage),'The panorama must visibly replace the cream background');
+  await page.evaluate(()=>window.secondShowcase.setBackground('hdri'));
+  await page.evaluate(()=>window.secondShowcase.renderAt(3.115));
+  const studioAgain=await page.screenshot();
+  const pixelError=await page.evaluate(async({a,b})=>{
+    const load=async data=>{const image=new Image();image.src='data:image/png;base64,'+data;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);return ctx.getImageData(0,0,canvas.width,canvas.height).data;};
+    const first=await load(a),second=await load(b);let maximum=0,changed=0;
+    for(let i=0;i<first.length;i++){const d=Math.abs(first[i]-second[i]);maximum=Math.max(maximum,d);if(d)changed++;}
+    return {maximum,changed};
+  },{a:studioImage.toString('base64'),b:studioAgain.toString('base64')});
+  assert.ok(pixelError.maximum<=2,`Background switch exceeded GPU rounding tolerance: ${JSON.stringify(pixelError)}`);
+  await fallback.page.evaluate(()=>window.secondShowcase.setBackground('hdri'));
+  await fallback.page.evaluate(()=>window.secondShowcase.renderAt(24.8));
+  await fallback.page.screenshot({path:'out/verification/background-webgl.png'});
+  assert.equal((await fallback.page.evaluate(()=>window.secondShowcase.sample())).lighting.background,'hdri');
+  await mobile.page.evaluate(()=>window.secondShowcase.setBackground('hdri'));
+  await mobile.page.evaluate(()=>window.secondShowcase.renderAt(24.8));
+  await mobile.page.screenshot({path:'out/verification/background-mobile.png'});
+  assert.equal(await mobile.page.evaluate(()=>document.documentElement.scrollWidth),390);
+  assert.deepEqual(errors,[]);assert.deepEqual(fallback.errors,[]);
+  console.log('HDRI background: visible panorama, switching, saved choice, stable frames, WebGPU/WebGL2 and phone layout passed',pixelError);
   console.log('HDRI: local asset, both graphics backends, lighting switch, and saved choice passed');
   assert.deepEqual(mobile.errors, []);console.log('Phone viewport and reduced-motion playback passed');
   await writeFile('out/verification/results.json', JSON.stringify({desktop: restored.renderer, fallback: fallbackState.renderer,

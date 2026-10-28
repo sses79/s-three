@@ -15,6 +15,8 @@ if(!['showcase','tutorial'].includes(film))throw new Error('Film must be showcas
 const duration=film==='tutorial'?TUTORIAL_DURATION:SHOWCASE_DURATION;
 const lighting=option('lighting','hdri');
 if(!['hdri','original'].includes(lighting))throw new Error('Lighting must be hdri or original');
+const background=option('background','cream');
+if(!['cream','hdri'].includes(background))throw new Error('Background must be cream or hdri');
 const width = Number(option('width', '1920')), height = Number(option('height', '1080'));
 const fps = Number(option('fps', '30'));
 if (!Number.isInteger(width) || !Number.isInteger(height) || width < 320 || height < 320 || width > 7680 || height > 4320) throw new Error('Invalid capture dimensions');
@@ -30,7 +32,7 @@ const frames = [];
 try {
   browser = await openBrowser();
   const {page, errors} = await openWatch(browser, url, {width, height,
-    query: `capture=1&lighting=${lighting}${film==='tutorial'?'&tutorial=1':''}${args.includes('--webgl') ? '&webgl=1' : ''}`});
+    query: `capture=1&lighting=${lighting}&background=${background}${film==='tutorial'?'&tutorial=1':''}${args.includes('--webgl') ? '&webgl=1' : ''}`});
   const render = async time => {
     const state = await page.evaluate(time => window.secondShowcase.renderAt(time), time);
     if (errors.length) throw new Error(errors.join('\n'));
@@ -83,7 +85,7 @@ try {
     }
   }
   const manifest = mode === 'stills' ? resolve(destination, 'manifest.json') : destination + '.json';
-  await writeFile(manifest, JSON.stringify({film,lighting,duration,width, height, ...(mode === 'video' ? {fps} : {}), frames}, null, 2) + '\n');
+  await writeFile(manifest, JSON.stringify({film,lighting,background,duration,width, height, ...(mode === 'video' ? {fps} : {}), frames}, null, 2) + '\n');
   console.log(`Saved ${destination}`);
 } finally {
   if (encoder && encoder.exitCode === null) encoder.kill();

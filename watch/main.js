@@ -21,12 +21,23 @@ const callouts=new ButtonCallouts($('tutorial-callouts'));
 function persist(){if(showcaseActive)return;try{localStorage.setItem('second-watch',JSON.stringify({...state.snapshot(),brand:brand.value,inscription:inscription.value,finish}));}catch{}}
 function setLighting(profile,persistChoice=true,options){
  if(!lighting)return;const result=lighting.set(profile,options);
- document.querySelectorAll('[data-lighting]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.lighting===result.profile));button.disabled=button.dataset.lighting==='hdri'&&!result.available;});
- $('lighting-status').textContent=result.available?result.name:'HDRI unavailable · original studio';
+ updateLightingControls(result);
  if(persistChoice)try{localStorage.setItem('second-lighting',result.profile);}catch{}
  return result;
 }
+function updateLightingControls(result){
+ document.querySelectorAll('[data-lighting]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.lighting===result.profile));button.disabled=button.dataset.lighting==='hdri'&&!result.available;});
+ document.querySelectorAll('[data-background]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.background===result.background));button.disabled=button.dataset.background==='hdri'&&!result.available;});
+ document.body.classList.toggle('hdri-background',result.background==='hdri');
+ $('lighting-status').textContent=result.available?`${result.name} · ${result.background==='hdri'?'Studio background':'Cream background'}`:'HDRI unavailable · original studio';
+}
+function setBackground(profile,persistChoice=true){
+ if(!lighting)return;const result=lighting.setBackground(profile);updateLightingControls(result);
+ if(persistChoice)try{localStorage.setItem('second-background',result.background);}catch{}
+ return result;
+}
 document.querySelectorAll('[data-lighting]').forEach(button=>button.onclick=()=>setLighting(button.dataset.lighting));
+document.querySelectorAll('[data-background]').forEach(button=>button.onclick=()=>setBackground(button.dataset.background));
 function action(name){
   if(name==='light')state.light();if(name==='mode')state.modeButton();if(name==='adjust')state.adjust();
   const b=buttons.find(x=>x.userData.action===name);if(b&&!reduced)b.userData.pressed=performance.now();
@@ -161,6 +172,8 @@ async function init(){
  lighting=await createLighting(renderer,scene);
  let storedLighting='hdri';try{storedLighting=localStorage.getItem('second-lighting')||'hdri';}catch{}
  setLighting(query.get('lighting')||storedLighting,false);
+ let storedBackground='cream';try{storedBackground=localStorage.getItem('second-background')||'cream';}catch{}
+ setBackground(query.get('background')||storedBackground,false);
  const gltf=await new GLTFLoader().loadAsync('assets/watch.glb');model=gltf.scene;model.scale.setScalar(100);model.rotation.x=Math.PI/2;model.rotation.z=-.1;scene.add(model);
  const bodyMat=gltf.scene.getObjectByName('case')?.material?.clone() || new THREE.MeshStandardMaterial();bodyMat.userData.body=true;bodyMat.normalScale.set(.4,.4);
  model.traverse(o=>{
@@ -205,6 +218,7 @@ async function init(){
  await renderer.compileAsync(scene,camera);
  window.secondShowcase={get ready(){return true;},sample:diagnostics,
   async setLighting(profile,options){setLighting(profile,false,options);renderer.render(scene,camera);await renderer.backend.device?.queue.onSubmittedWorkDone();return diagnostics();},
+  async setBackground(profile){setBackground(profile,false);renderer.render(scene,camera);await renderer.backend.device?.queue.onSubmittedWorkDone();return diagnostics();},
   async renderAt(time){if(!showcaseActive)startShowcase({time,playing:false});showcasePlaying=false;applyShowcase(time);renderer.render(scene,camera);await renderer.backend.device?.queue.onSubmittedWorkDone();return diagnostics();},
   start:startShowcase,stop:stopShowcase};
  renderer.setAnimationLoop(now=>{
