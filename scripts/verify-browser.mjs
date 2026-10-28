@@ -31,16 +31,39 @@ try {
   await page.locator('#showcase-exit').click();
   assert.equal(await page.locator('#brand').inputValue(), 'MY SECOND');
   const restored = await page.evaluate(() => window.secondShowcase.sample());
-  assert.equal(restored.finish, 'gold');assert.equal(restored.lit, true);assert.equal(restored.active, false);
+  assert.equal(restored.finish, 'gold');assert.equal(restored.mode, 'clock');assert.equal(restored.active, false);
   assert.equal(await page.evaluate(() => localStorage.getItem('second-watch')), saved);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.screenshot({path: 'out/verification/watch-lab.png', fullPage: true});
   assert.deepEqual(errors, []);
   console.log(`Desktop ${restored.renderer}: live controls, state restoration, backward seeking, identical captures passed`);
+  // Use the model's projected physical button positions, not the HTML shortcuts.
+  const pressPhysical=async action=>{const p=(await page.evaluate(()=>window.secondShowcase.sample())).buttons[action];await page.mouse.click(p.x,p.y);};
+  await pressPhysical('mode');assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).mode,'alarm');
+  await pressPhysical('light');assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).alarm.field,'hours');
+  await pressPhysical('adjust');await pressPhysical('light');await pressPhysical('adjust');await pressPhysical('mode');
+  const setAlarm=(await page.evaluate(()=>window.secondShowcase.sample())).alarm;
+  assert.equal(setAlarm.enabled,true);assert.equal(setAlarm.hour,8);assert.equal(setAlarm.minute,1);
+  const tutorial=await openWatch(browser,url,{query:'capture=1&tutorial=1'});
+  const sampleTutorial=time=>tutorial.page.evaluate(time=>window.secondShowcase.renderAt(time),time);
+  assert.equal((await sampleTutorial(18.6)).display.time.startsWith('11:10:'),true);
+  assert.deepEqual((({hour,minute,enabled})=>({hour,minute,enabled}))((await sampleTutorial(29.5)).alarm),{hour:8,minute:1,enabled:true});
+  await sampleTutorial(29.5);const alarmImage=await tutorial.page.screenshot();
+  await sampleTutorial(46.5);assert.equal((await sampleTutorial(43.5)).stopwatch,4000);
+  await sampleTutorial(29.5);assert.deepEqual(await tutorial.page.screenshot(),alarmImage);
+  const anchorState=await sampleTutorial(24.8);
+  const ring=tutorial.page.locator('[data-button="adjust"] .button-ring');
+  assert.ok(Math.abs(Number(await ring.getAttribute('cx'))-anchorState.buttons.adjust.x)<.01);
+  assert.ok(Math.abs(Number(await ring.getAttribute('cy'))-anchorState.buttons.adjust.y)<.01);
+  await tutorial.page.screenshot({path:'out/verification/tutorial-desktop.png'});
+  assert.deepEqual(tutorial.errors,[]);console.log('Tutorial: real 3D button picking, time setting, alarm, callout anchors, stopwatch and repeatable captures passed');
   const fallback = await openWatch(browser, url, {query: 'capture=1&webgl=1'});
   const fallbackState = await fallback.page.evaluate(() => window.secondShowcase.renderAt(8.5));
   assert.equal(fallbackState.renderer, 'WebGL2');assert.equal(fallbackState.finish, 'gold');
   assert.deepEqual(fallback.errors, []);console.log('Forced WebGL2: model, face, and showcase passed');
+  await fallback.page.evaluate(()=>window.secondShowcase.start({kind:'tutorial',time:29.5,playing:false}));
+  assert.equal((await fallback.page.evaluate(()=>window.secondShowcase.sample())).alarm.enabled,true);
+  await fallback.page.screenshot({path:'out/verification/tutorial-webgl.png'});assert.deepEqual(fallback.errors,[]);
   const mobile = await openWatch(browser, url, {width: 390, height: 844, query: 'showcase=1'});
   await mobile.page.evaluate(() => window.secondShowcase.renderAt(3.115));
   assert.equal(await mobile.page.evaluate(() => document.documentElement.scrollWidth), 390);
@@ -48,9 +71,14 @@ try {
   await mobile.page.locator('#showcase-exit').click();
   await mobile.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await mobile.page.screenshot({path: 'out/verification/mobile-watch-lab.png', fullPage: true});
+  await mobile.page.evaluate(()=>window.secondShowcase.start({kind:'tutorial',time:24.8,playing:false}));
+  await mobile.page.evaluate(()=>window.secondShowcase.renderAt(24.8));
+  const instruction=await mobile.page.locator('#tutorial-instruction').boundingBox();
+  assert.ok(instruction.x>=0&&instruction.x+instruction.width<=390);
+  await mobile.page.screenshot({path:'out/verification/tutorial-mobile.png'});
   assert.deepEqual(mobile.errors, []);console.log('Phone viewport and reduced-motion playback passed');
   await writeFile('out/verification/results.json', JSON.stringify({desktop: restored.renderer, fallback: fallbackState.renderer,
-    tests: ['live controls', 'preference restoration', 'deterministic image', 'backward seek', 'WebGL2', 'mobile', 'reduced motion']}, null, 2));
+    tests: ['live controls','physical button picking','time setting','daily alarm','tutorial callouts','tutorial deterministic image','preference restoration', 'deterministic image', 'backward seek', 'WebGL2', 'mobile', 'reduced motion']}, null, 2));
 } finally {
   await browser?.close();await new Promise(resolve => server.close(resolve));
 }
