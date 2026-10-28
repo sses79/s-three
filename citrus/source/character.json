@@ -1,0 +1,12 @@
+{
+  "sourceSha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997",
+  "outputSha256": "edd6ace9dfd8354847fa38a6aadf45a288836841ec534387bb3321cbf6c436e4",
+  "bytes": 1537100,
+  "clips": [
+    "Idle_Loop",
+    "Walk_Loop",
+    "Jump_Start",
+    "Jump_Loop",
+    "Jump_Land"
+  ]
+}

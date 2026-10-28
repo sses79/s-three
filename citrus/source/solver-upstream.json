@@ -1,0 +1,8 @@
+{
+  "source": "https://github.com/sses79/3d-action/blob/main/index.html",
+  "sha256": "c0581d6e037a97d4bd305adaea183f0a1d0b71d98be5cf3239d1548ed91584ed",
+  "nodes": 995,
+  "tetrahedra": 4224,
+  "surfaceTriangles": 1056,
+  "rotation": "[x,y,z] -> [x,z+0.32,1.72-y]"
+}

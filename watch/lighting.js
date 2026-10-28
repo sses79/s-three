@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {HDRLoader} from 'three/addons/loaders/HDRLoader.js';
 
-export async function createLighting(renderer, scene) {
+export async function createLighting(renderer, scene, {hdrURL='assets/studio_small_09_2k.hdr'}={}) {
   const pmrem = new THREE.PMREMGenerator(renderer), room = new RoomEnvironment();
   const original = pmrem.fromScene(room, .04);room.dispose();
   const fill = new THREE.HemisphereLight(0xffffff, 0x83937a, 2);
@@ -36,7 +36,7 @@ export async function createLighting(renderer, scene) {
   set('original');
   let source;
   try {
-    source = await new HDRLoader().loadAsync('assets/studio_small_09_2k.hdr');
+    source = await new HDRLoader().loadAsync(hdrURL);
     hdri = pmrem.fromEquirectangular(source);
     source.mapping = THREE.EquirectangularReflectionMapping;
     panorama = source;

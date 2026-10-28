@@ -11,11 +11,17 @@ const routes = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/assets/watch.glb', ['assets/watch.glb', 'model/gltf-binary']],
   ['/assets/studio_small_09_2k.hdr', ['assets/studio_small_09_2k.hdr', 'image/vnd.radiance']],
+  ['/citrus/', ['citrus/index.html', 'text/html; charset=utf-8']],
+  ['/citrus/index.html', ['citrus/index.html', 'text/html; charset=utf-8']],
+  ['/citrus/style.css', ['citrus/style.css', 'text/css; charset=utf-8']],
+  ['/citrus/app.js', ['citrus/app.js', 'text/javascript; charset=utf-8']],
+  ['/citrus/assets/character.glb', ['citrus/assets/character.glb', 'model/gltf-binary']],
 ]);
 
 export async function startServer({port = 5173, host = '127.0.0.1', rebuild = true} = {}) {
   if (rebuild) await build();
   const server = createServer(async (request, response) => {
+    if(new URL(request.url,'http://localhost').pathname==='/citrus'){response.writeHead(308,{Location:'/citrus/'});response.end();return;}
     const route = routes.get(new URL(request.url, 'http://localhost').pathname);
     if (!route || !['GET', 'HEAD'].includes(request.method)) {
       response.writeHead(404); response.end('Not found'); return;

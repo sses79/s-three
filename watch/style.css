@@ -4,6 +4,8 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 
 #inscription{font-size:11px;letter-spacing:.5px;font-weight:500}
+.film-links a{display:flex;align-items:center;border:1px solid #c8ccbd;border-radius:20px;padding:10px 15px;font-size:10px;letter-spacing:.5px}
+@media(max-width:760px){.film-links a{padding:8px 10px;font-size:9px}}
 .lighting-tools .background-options{display:flex;width:max-content;margin:6px 0 0 auto}.lighting-tools .background-label{display:inline;margin:0 7px;align-self:center;font-size:8px;color:#68755b;letter-spacing:.5px}
 .hdri-background.showcase-active #showcase-overlay{background:linear-gradient(90deg,#eeeae2f2 0%,#eeeae2e6 25%,transparent 36%)}
 .hdri-background.showcase-active .showcase-copy{max-width:29%}

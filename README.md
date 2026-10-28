@@ -4,7 +4,24 @@ A standalone Three.js digital watch with an interactive Watch Lab, a repeatable 
 
 ![Six moments from the SECOND showcase](docs/showcase.png)
 
-Extracted from [sses79/3d-action](https://github.com/sses79/3d-action) at commit [`e8e9cea`](https://github.com/sses79/3d-action/commit/e8e9cea06b6ac8994bcbcc10dd663ab8a691910f). The original watch files were verified against that commit before copying. Citrus Jelly and Animation Studio are separate projects and are not included here.
+The watch was extracted from [sses79/3d-action](https://github.com/sses79/3d-action) at commit [`e8e9cea`](https://github.com/sses79/3d-action/commit/e8e9cea06b6ac8994bcbcc10dd663ab8a691910f). The original watch files were verified against that commit before copying. The Citrus playground below reuses that project's soft-body solver and character assets. Animation Studio is separate and is not included here.
+
+## Citrus / Little Leaps
+
+The new [Citrus playground](http://127.0.0.1:5173/citrus/) brings the original Citrus Jelly solver and the Quaternius dummy into one Three.js scene. An 8 cm character can jump on the soft slice: takeoff and landings deform the volume, while the moving surface supports and rebounds the character.
+
+![Tiny dummy jumping on the soft citrus platform](docs/citrus-playground.png)
+
+- **Space / Jump:** jump from the jelly or floor.
+- **W A S D / arrows:** move; touch users have a directional pad and jump button.
+- **Drag the flesh:** stretch the jelly. Drag empty space to orbit; scroll or pinch to zoom.
+- **Reset / R:** restore the platform, character, and camera.
+- **Pause, Wobble, ¼ speed, Show mesh:** inspect the motion.
+- **Firmness, damping, dummy weight, Orange/Lemon/Ruby:** explore different responses and looks.
+
+Reduced motion starts paused. Jump or Wobble resumes play. The playground uses WebGPU with WebGL2 fallback; append `?webgl=1` to test the fallback. Its renderer shares the bundled studio HDRI with SECOND.
+
+`npm run test:citrus` runs real-browser checks for keyboard/touch jumping, deformation, landing, walking, dragging, WebGL2, and the phone layout. Numeric tests cover repeated jumps, weight/firmness extremes, volume preservation, floor support, and side entry. See [source and simulation notes](citrus/source/README.md) for the compact model provenance and contact approximation.
 
 ## Run
 
@@ -109,6 +126,7 @@ Captures use the same scene, fixed UTC showcase clock, and absolute-time camera/
 npm run build
 npm test
 npm run test:browser
+npm run test:citrus
 ```
 
 `dist/` is a standalone static site. The included localhost server serves only the public build files. `npm run dev` rebuilds on source changes and restarts the server; refresh the browser afterward. `PORT=5174 npm run preview` starts a fresh build on another port.
