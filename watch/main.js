@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {createLighting} from './lighting.js';
 import {sampleShowcase, SHOWCASE_DURATION} from './showcase.js';
 import {ManualWatchState} from './manual-state.js';
 import {sampleTutorial, TUTORIAL_DURATION} from './tutorial.js';
@@ -14,11 +14,19 @@ const duration=()=>showcaseKind==='tutorial'?TUTORIAL_DURATION:SHOWCASE_DURATION
 let saved={};try{saved=JSON.parse(localStorage.getItem('second-watch')||'{}');}catch{}
 const liveState=new ManualWatchState(saved);let state=liveState;const brand=$('brand');brand.value=typeof saved.brand==='string'?saved.brand.slice(0,14):'SECOND';
 const inscription=$('inscription');inscription.value=typeof saved.inscription==='string'?saved.inscription.slice(0,32):'MAKE EVERY SECOND YOURS';
-let renderer,scene,camera,controls,model,face,faceTexture,faceContext,finish='steel',lastFace='',lastUi='',auto=false;
+let renderer,scene,camera,controls,model,face,faceTexture,faceContext,lighting,finish='steel',lastFace='',lastUi='',auto=false;
 const buttons=[],pickTargets=[],raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const callouts=new ButtonCallouts($('tutorial-callouts'));
 function persist(){if(showcaseActive)return;try{localStorage.setItem('second-watch',JSON.stringify({...state.snapshot(),brand:brand.value,inscription:inscription.value,finish}));}catch{}}
+function setLighting(profile,persistChoice=true,options){
+ if(!lighting)return;const result=lighting.set(profile,options);
+ document.querySelectorAll('[data-lighting]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.lighting===result.profile));button.disabled=button.dataset.lighting==='hdri'&&!result.available;});
+ $('lighting-status').textContent=result.available?result.name:'HDRI unavailable · original studio';
+ if(persistChoice)try{localStorage.setItem('second-lighting',result.profile);}catch{}
+ return result;
+}
+document.querySelectorAll('[data-lighting]').forEach(button=>button.onclick=()=>setLighting(button.dataset.lighting));
 function action(name){
   if(name==='light')state.light();if(name==='mode')state.modeButton();if(name==='adjust')state.adjust();
   const b=buttons.find(x=>x.userData.action===name);if(b&&!reduced)b.userData.pressed=performance.now();
@@ -132,6 +140,7 @@ function stopShowcase(){
  setFinish(showcaseFinish);lastFace='';lastUi='';view(false);resize();drawFace();updateUI();
 }
 function diagnostics(){return {ready:!!model,active:showcaseActive,playing:showcasePlaying,time:showcaseTime,duration:duration(),kind:showcaseKind,
+ lighting:lighting?.describe(),
  finish,display:strings(),lit:state.lit,mode:state.mode,stopwatch:state.stopwatch(),camera:camera.position.toArray(),target:controls.target.toArray(),
  alarm:state.controls==='manual'?{hour:state.alarmHour,minute:state.alarmMinute,enabled:state.alarmEnabled,field:state.alarmField,ringing:state.ringing}:null,
  field:state.edit!==null?state.field:null,buttons:model?buttonPoints():{},
@@ -149,8 +158,9 @@ function boundsFromIndices(geometry){const box=new THREE.Box3();const v=new THRE
 async function init(){
  renderer=new THREE.WebGPURenderer({canvas,antialias:true,alpha:true,forceWebGL:query.has('webgl')});await renderer.init();renderer.setPixelRatio(capture?1:Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(36,1,.05,100);controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.enablePan=false;controls.dampingFactor=.08;
- const env=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(env,.04).texture;scene.environmentIntensity=1.5;env.dispose();pmrem.dispose();
- scene.add(new THREE.HemisphereLight(0xffffff,0x83937a,2));const key=new THREE.DirectionalLight(0xfff5dc,3);key.position.set(-3,6,8);scene.add(key);const rim=new THREE.DirectionalLight(0xd1e1ff,2);rim.position.set(4,-1,5);scene.add(rim);
+ lighting=await createLighting(renderer,scene);
+ let storedLighting='hdri';try{storedLighting=localStorage.getItem('second-lighting')||'hdri';}catch{}
+ setLighting(query.get('lighting')||storedLighting,false);
  const gltf=await new GLTFLoader().loadAsync('assets/watch.glb');model=gltf.scene;model.scale.setScalar(100);model.rotation.x=Math.PI/2;model.rotation.z=-.1;scene.add(model);
  const bodyMat=gltf.scene.getObjectByName('case')?.material?.clone() || new THREE.MeshStandardMaterial();bodyMat.userData.body=true;bodyMat.normalScale.set(.4,.4);
  model.traverse(o=>{
@@ -194,6 +204,7 @@ async function init(){
  if(query.has('showcase')||query.has('tutorial')||capture)startShowcase({time:Number(query.get('t'))||0});
  await renderer.compileAsync(scene,camera);
  window.secondShowcase={get ready(){return true;},sample:diagnostics,
+  async setLighting(profile,options){setLighting(profile,false,options);renderer.render(scene,camera);await renderer.backend.device?.queue.onSubmittedWorkDone();return diagnostics();},
   async renderAt(time){if(!showcaseActive)startShowcase({time,playing:false});showcasePlaying=false;applyShowcase(time);renderer.render(scene,camera);await renderer.backend.device?.queue.onSubmittedWorkDone();return diagnostics();},
   start:startShowcase,stop:stopShowcase};
  renderer.setAnimationLoop(now=>{

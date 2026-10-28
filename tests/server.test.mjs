@@ -5,7 +5,7 @@ import {startServer} from '../scripts/serve.mjs';
 test('preview serves browser files and rejects source and traversal paths', async () => {
   const {server, url} = await startServer({port: 0});
   try {
-    for (const path of ['/', '/app.js', '/style.css', '/assets/watch.glb']) {
+    for (const path of ['/', '/app.js', '/style.css', '/assets/watch.glb', '/assets/studio_small_09_2k.hdr']) {
       assert.equal((await fetch(url + path)).status, 200, path);
     }
     for (const path of ['/package.json', '/watch/source/second-watch.blend', '/.git/config', '/%2e%2e/package.json']) {

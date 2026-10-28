@@ -9,6 +9,7 @@ try {
   browser = await openBrowser();
   await mkdir('out/verification', {recursive: true});
   const {page, errors} = await openWatch(browser, url, {query: ''});
+  assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.profile,'hdri');
   await page.locator('#brand').fill('MY SECOND');
   await page.locator('[data-finish="gold"]').click();
   await page.locator('[data-action="light"]').click();
@@ -60,6 +61,7 @@ try {
   const fallback = await openWatch(browser, url, {query: 'capture=1&webgl=1'});
   const fallbackState = await fallback.page.evaluate(() => window.secondShowcase.renderAt(8.5));
   assert.equal(fallbackState.renderer, 'WebGL2');assert.equal(fallbackState.finish, 'gold');
+  assert.equal(fallbackState.lighting.available,true);assert.equal(fallbackState.lighting.profile,'hdri');
   assert.deepEqual(fallback.errors, []);console.log('Forced WebGL2: model, face, and showcase passed');
   await fallback.page.evaluate(()=>window.secondShowcase.start({kind:'tutorial',time:29.5,playing:false}));
   assert.equal((await fallback.page.evaluate(()=>window.secondShowcase.sample())).alarm.enabled,true);
@@ -76,6 +78,13 @@ try {
   const instruction=await mobile.page.locator('#tutorial-instruction').boundingBox();
   assert.ok(instruction.x>=0&&instruction.x+instruction.width<=390);
   await mobile.page.screenshot({path:'out/verification/tutorial-mobile.png'});
+  await page.locator('[data-lighting="original"]').click();
+  assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.profile,'original');
+  await page.reload();await page.waitForFunction(()=>window.secondShowcase?.ready);
+  assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.profile,'original');
+  await page.locator('[data-lighting="hdri"]').click();
+  assert.equal((await page.evaluate(()=>window.secondShowcase.sample())).lighting.profile,'hdri');
+  console.log('HDRI: local asset, both graphics backends, lighting switch, and saved choice passed');
   assert.deepEqual(mobile.errors, []);console.log('Phone viewport and reduced-motion playback passed');
   await writeFile('out/verification/results.json', JSON.stringify({desktop: restored.renderer, fallback: fallbackState.renderer,
     tests: ['live controls','physical button picking','time setting','daily alarm','tutorial callouts','tutorial deterministic image','preference restoration', 'deterministic image', 'backward seek', 'WebGL2', 'mobile', 'reduced motion']}, null, 2));

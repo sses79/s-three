@@ -10,6 +10,7 @@ const routes = new Map([
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/assets/watch.glb', ['assets/watch.glb', 'model/gltf-binary']],
+  ['/assets/studio_small_09_2k.hdr', ['assets/studio_small_09_2k.hdr', 'image/vnd.radiance']],
 ]);
 
 export async function startServer({port = 5173, host = '127.0.0.1', rebuild = true} = {}) {

@@ -24,6 +24,19 @@ Pause and scrub either sequence; **Back to Watch Lab** restores the live watch a
 
 The watch uses Three.js 0.186.1 `WebGPURenderer` with WebGL2 fallback. Add `?webgl=1` to exercise the fallback. All browser dependencies and the GLB are local; no CDN or API key is needed.
 
+## HDRI lighting trial
+
+The default environment is Poly Haven's [Studio Small 09](https://polyhaven.com/a/studio_small_09) by Sergej Majboroda (CC0). The 2K HDR file is bundled locally (2048 × 1024, 6.31 MB), with its download URL and verified checksums in `watch/assets/studio_small_09.json`.
+
+Use **Studio 09 HDRI / Original** above the watch to compare the lighting. This choice is remembered separately from watch preferences. The cream background stays visible; the HDRI provides environment lighting and reflections. If the HDRI cannot load, the original studio is used and the lighting status reports it.
+
+- [HDRI showcase](http://127.0.0.1:5173/?showcase=1&lighting=hdri)
+- [Original lighting](http://127.0.0.1:5173/?showcase=1&lighting=original)
+
+The trial rotates the panorama 180 degrees and uses environment intensity 1 with modest supporting fill/key/rim lights. The original profile restores the previous room map and lighting values. `npm run compare:lighting` captures both profiles at identical times and camera positions across steel, gold, and graphite; results go to `out/lighting/`.
+
+![Original lighting beside Studio Small 09](docs/lighting-comparison.png)
+
 ## Watch Lab
 
 Drag to orbit and scroll or pinch to zoom. Use the physical buttons or panel controls:
@@ -77,6 +90,9 @@ npm run capture -- sheet --film tutorial
 # Phone composition or forced WebGL2 capture
 npm run capture -- sheet --width 390 --height 844 --out out/mobile.png
 npm run capture -- sheet --webgl --out out/webgl.png
+
+# Capture the previous lighting profile explicitly
+npm run capture -- sheet --lighting original --out out/original.png
 ```
 
 Captures use the same scene, fixed UTC showcase clock, and absolute-time camera/button evaluation as the preview. Seek order does not change the result. `?capture=1&t=8.5` opens a paused composition with playback controls hidden. Captures are repeatable within the tested browser/backend; fonts and GPU output can vary between platforms. The exporter captures browser frames at fixed times, without temporal supersampling or motion blur. Output goes into ignored `out/`.
@@ -103,6 +119,7 @@ The unit checks cover both watch states, manual button sequences, alarm persiste
 | `watch/showcase.js` | Fixed clock, button events, camera keyframes, finishes, captions |
 | `watch/tutorial.js` | Second film: timed instructions and real button event replay |
 | `watch/callouts.js` | SVG rings, leader lines, labels, and animated press pointers |
+| `watch/lighting.js` | HDR loading, filtered reflection maps, and original/HDRI profiles |
 | `watch/assets/watch.glb` | Self-contained 2.17 MB runtime model |
 | `watch/source/second-watch.blend` | Editable prepared Blender scene with packed textures |
 | `scripts/capture.mjs` | Stills, contact sheets, video, and capture manifests |
