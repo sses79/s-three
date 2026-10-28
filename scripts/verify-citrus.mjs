@@ -27,6 +27,21 @@ try{
     const landed=await page.evaluate(()=>window.citrusPlayground.advance(450));
     assert.ok(landed.landings>=1);assert.equal(landed.actor.support,'jelly');assert.ok(landed.peakDent>.04);assert.equal(landed.jelly.recoveries,0);
     await page.screenshot({path:'out/citrus/landed.png'});
+    assert.ok(Math.abs(landed.contact.load-1)<.15);assert.equal(landed.forcesVisible,true);
+    await page.locator('#forces').uncheck();await page.evaluate(()=>window.citrusPlayground.advance(1));
+    assert.equal((await page.evaluate(()=>window.citrusPlayground.diagnostics())).forcesVisible,false);
+    await page.locator('#forces').check();
+    await page.locator('#rebound').evaluate(input=>{input.value='45';input.dispatchEvent(new Event('input',{bubbles:true}));});
+    assert.equal((await page.evaluate(()=>window.citrusPlayground.diagnostics())).restitution,.45);
+    await page.locator('#reset').click();await page.evaluate(()=>{window.citrusPlayground.pause(true);window.citrusPlayground.advance(240);});
+    await page.keyboard.press('b');await page.waitForFunction(()=>window.citrusPlayground.diagnostics().jellyBounces===1);
+    await page.evaluate(()=>window.citrusPlayground.pause(true));
+    const launched=await page.evaluate(()=>window.citrusPlayground.advance(20));
+    assert.equal(launched.jumps,0);assert.equal(launched.actor.support,'air');assert.ok(launched.actor.y>.62);
+    await page.screenshot({path:'out/citrus/jelly-launch.png'});
+    const returned=await page.evaluate(()=>window.citrusPlayground.advance(450));
+    assert.equal(returned.actor.support,'jelly');assert.ok(returned.landings>=1);assert.ok(returned.peakLoad>2);
+    assert.match(await page.locator('#contact-load').textContent(),/weight/);
     await page.keyboard.down('ArrowRight');const moved=await page.evaluate(()=>window.citrusPlayground.advance(90));await page.keyboard.up('ArrowRight');
     assert.ok(Math.hypot(moved.actor.x,moved.actor.z-.78)>.4);
     await page.locator('#reset').click();await page.evaluate(()=>window.citrusPlayground.pause(true));
@@ -37,11 +52,12 @@ try{
     assert.equal((await page.evaluate(()=>window.citrusPlayground.diagnostics())).dragging,false);
     await page.evaluate(()=>window.citrusPlayground.pause(true));const released=await page.evaluate(()=>window.citrusPlayground.advance(180));assert.equal(released.jelly.finite,true);
     assert.deepEqual(errors,[]);results.push({backend:initial.backend,jumps:landed.jumps,landings:landed.landings,peakDent:landed.peakDent,volume:landed.jelly.volumeRatio});
-    console.log('Desktop: tiny rig, keyboard jump, two-way jelly deformation, landing, movement and flesh dragging passed');await page.close();
+    console.log('Desktop: jump, jelly-only launch, rebound control, force display, support load, landing, movement and flesh dragging passed');await page.close();
   }
   {
-    const{page,errors}=await open({webgl:true});await page.evaluate(()=>{window.citrusPlayground.advance(120);window.citrusPlayground.jump();});
+    const{page,errors}=await open({webgl:true});await page.evaluate(()=>{window.citrusPlayground.advance(120);window.citrusPlayground.bounceJelly();});
     const d=await page.evaluate(()=>window.citrusPlayground.advance(400));assert.equal(d.backend,'WebGL2');assert.ok(d.landings>=1);assert.equal(d.jelly.finite,true);
+    assert.equal(d.jumps,0);assert.equal(d.jellyBounces,1);assert.equal(d.forcesVisible,true);
     await page.screenshot({path:'out/citrus/webgl.png'});assert.deepEqual(errors,[]);console.log('WebGL2: model, jelly material and landing passed');await page.close();
   }
   {
@@ -49,7 +65,14 @@ try{
     await page.evaluate(()=>window.citrusPlayground.pause(true));const d=await page.evaluate(()=>window.citrusPlayground.advance(25));assert.equal(d.actor.support,'air');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
     const jump=await page.locator('#touch-jump').boundingBox();assert.ok(jump.y+jump.height<=844);
-    await page.screenshot({path:'out/citrus/mobile.png'});assert.deepEqual(errors,[]);console.log('Phone viewport: touch jump, reduced-motion starting state and layout passed');await page.close();
+    await page.screenshot({path:'out/citrus/mobile.png'});
+    await page.locator('#reset').tap();await page.evaluate(()=>{window.citrusPlayground.pause(true);window.citrusPlayground.advance(120);});
+    await page.locator('#bounce').tap();await page.waitForFunction(()=>window.citrusPlayground.diagnostics().jellyBounces===1);
+    await page.evaluate(()=>window.citrusPlayground.pause(true));const bounce=await page.evaluate(()=>window.citrusPlayground.advance(20));
+    assert.equal(bounce.jumps,0);assert.equal(bounce.actor.support,'air');
+    await page.evaluate(()=>window.citrusPlayground.advance(450));
+    await page.screenshot({path:'out/citrus/mobile-contact.png'});
+    assert.deepEqual(errors,[]);console.log('Phone viewport: touch jump, jelly-only launch, contact controls, reduced-motion starting state and layout passed');await page.close();
   }
   await writeFile('out/citrus/results.json',JSON.stringify(results,null,2));
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

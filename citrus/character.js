@@ -20,7 +20,7 @@ export class TinyCharacter {
   }
   update(actor,time){
     let name='Idle_Loop',sample=time;
-    if(!actor.grounded){name=actor.vy>.3?'Jump_Start':'Jump_Loop';sample=name==='Jump_Start'?Math.min(.65,(time-actor.jumpAt)*1.7):time;}
+    if(!actor.grounded){name=actor.vy>.3?'Jump_Start':'Jump_Loop';sample=name==='Jump_Start'?Math.min(.65,(time-Math.max(actor.jumpAt,actor.airAt))*1.7):time;}
     else if(time-actor.landAt<.3){name='Jump_Land';sample=(time-actor.landAt)*2.3;}
     else if(Math.hypot(actor.vx,actor.vz)>.15){name='Walk_Loop';sample=time*1.6;}
     const action=this.actions.get(name)||this.actions.get('Idle_Loop');

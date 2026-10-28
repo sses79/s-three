@@ -29,9 +29,13 @@ const surface=Array.from(faces.values()).flat(),indices=new Uint32Array(surface)
 const count=rest.length/3,p=new Float32Array(rest),initial=new Float32Array(rest),vel=new Float32Array(rest.length),prev=new Float32Array(rest.length),normals=new Float32Array(rest.length),packed=new Float32Array(count*10),weights=new Float32Array(count),edgeRest=new Float32Array(edges.length),edgeFactor=new Float32Array(edges.length),edgeLambda=new Float32Array(edges.length),tetRest=new Float32Array(tetList.length),tetLambda=new Float32Array(tetList.length);
 let restVolume=0;
 for(let t=0;t<tetList.length;t++){const vol=volumeAt(initial,...tetList[t]);tetRest[t]=vol;restVolume+=vol;for(const i of tetList[t])weights[i]+=vol/4}
-const nodeMass=Float32Array.from(weights,w=>w/restVolume*.42);for(let i=0;i<count;i++)weights[i]=1/Math.max(.1,weights[i]/(restVolume/count));
+for(let i=0;i<count;i++)weights[i]=1/Math.max(.1,weights[i]/(restVolume/count));
+// Keep the solver's conditioned inverse weights, but give every contact and
+// impulse the same physical mass scale. The effective masses sum to 420 g.
+const massUnit=.42/weights.reduce((sum,w)=>sum+1/w,0);
+const nodeMass=Float32Array.from(weights,w=>massUnit/w);
 for(let e=0;e<edges.length;e++){const [a,b]=edges[e];edgeFactor[e]=Math.max(Math.hypot(initial[a*3],initial[a*3+2]),Math.hypot(initial[b*3],initial[b*3+2]))>R*.89?.24:1;edgeRest[e]=Math.hypot(initial[a*3]-initial[b*3],initial[a*3+1]-initial[b*3+1],initial[a*3+2]-initial[b*3+2])}
-let paused=false,slow=false,showMesh=false,firmness=.45,damping=.35,preset=0,drag=null,orbit=null,accumulator=0,simTime=0,totalVolume=restVolume,kinetic=0;
+let firmness=.45,damping=.35,drag=null,simTime=0,totalVolume=restVolume;
 const STEP=1/120, ITERATIONS=5,grad=new Float64Array(12);
 function solveVolume(t,h){
  const ids=tetList[t],a=ids[0]*3,b=ids[1]*3,c=ids[2]*3,d=ids[3]*3;
@@ -80,27 +84,27 @@ function step(h,contactSolver){
   contactSolver?.(h,it);
  }
  // Internal damping removes relative motion while preserving overall momentum.
- let av=[0,0,0];for(let i=0;i<count;i++)for(let j=0;j<3;j++){vel[i*3+j]=(p[i*3+j]-prev[i*3+j])/h;av[j]+=vel[i*3+j]/count}
- const internal=1-Math.exp(-(1+damping*18)*h);kinetic=0;
- for(let i=0;i<count;i++)for(let j=0;j<3;j++){const k=i*3+j;vel[k]+=(av[j]-vel[k])*internal;vel[k]=clamp(vel[k],-12,12);kinetic+=.5*nodeMass[i]*(vel[k]*.1)**2}
+ let av=[0,0,0];for(let i=0;i<count;i++)for(let j=0;j<3;j++){vel[i*3+j]=(p[i*3+j]-prev[i*3+j])/h;av[j]+=vel[i*3+j]*nodeMass[i]/.42}
+ const internal=1-Math.exp(-(1+damping*18)*h);
+ for(let i=0;i<count;i++)for(let j=0;j<3;j++){const k=i*3+j;vel[k]+=(av[j]-vel[k])*internal;vel[k]=clamp(vel[k],-12,12)}
  totalVolume=0;let valid=true;for(let t=0;t<tetList.length;t++){const v=volumeAt(p,...tetList[t]);totalVolume+=v;if(v< -tetRest[t]*.1)valid=false}
  for(let k=0;k<p.length;k++)if(!Number.isFinite(p[k])||Math.abs(p[k])>20){valid=false;break}
- if(!valid){p.set(prev);fitShape();for(let k=0;k<p.length;k++)p[k]+=(shapeGoals[k]-p[k])*.14;for(let i=0;i<count;i++)p[i*3+1]=Math.max(.065,p[i*3+1]);vel.fill(0);drag=null;recoveries++;totalVolume=tetList.reduce((v,t)=>v+volumeAt(p,...t),0);kinetic=0;toast('Stretch limit reached — easing back into shape.')}
+ if(!valid){p.set(prev);fitShape();for(let k=0;k<p.length;k++)p[k]+=(shapeGoals[k]-p[k])*.14;for(let i=0;i<count;i++)p[i*3+1]=Math.max(.065,p[i*3+1]);vel.fill(0);drag=null;recoveries++;totalVolume=tetList.reduce((v,t)=>v+volumeAt(p,...t),0);toast('Stretch limit reached — easing back into shape.')}
  simTime+=h;
 }
 
 const layerSize=count/5;
 const topTriangles=[];
 for(let f=0;f<surface.length;f+=3){const ids=surface.slice(f,f+3);if(ids.every(i=>i>=layerSize*4))topTriangles.push(ids);}
-function reset(){p.set(initial);prev.set(initial);vel.fill(0);drag=null;simTime=0;rotation=[1,0,0,0,1,0,0,0,1];totalVolume=restVolume;kinetic=0;recoveries=0;}
+function reset(){p.set(initial);prev.set(initial);vel.fill(0);drag=null;simTime=0;rotation=[1,0,0,0,1,0,0,0,1];totalVolume=restVolume;recoveries=0;}
 function impulse(x,z,impulse,radius=.38){
  const affected=[];let sum=0;
  for(let i=0;i<count;i++){const k=i*3,d=Math.hypot(p[k]-x,p[k+2]-z);if(d<radius&&initial[k+1]>.3){const w=(1-d/radius)**2;affected.push([i,w]);sum+=w;}}
  for(const[i,w]of affected)vel[i*3+1]+=impulse*w/(sum*nodeMass[i]);
 }
-return {positions:p,initial,velocities:vel,previous:prev,weights,nodeMass,indices,topTriangles,count,layerSize,restVolume,step,reset,impulse,
+return {positions:p,initial,velocities:vel,previous:prev,weights,nodeMass,massUnit,indices,topTriangles,count,layerSize,restVolume,step,reset,impulse,
  setTuning(f,d){firmness=clamp(f,0,1);damping=clamp(d,0,1);},
  setDrag(value){drag=value;},
- get diagnostics(){let minY=Infinity,maxDent=0;for(let i=0;i<count;i++){minY=Math.min(minY,p[i*3+1]);if(i>=layerSize*4)maxDent=Math.max(maxDent,initial[i*3+1]-p[i*3+1]);}return {nodes:count,tetrahedra:tetList.length,surfaceTriangles:surface.length/3,volumeRatio:totalVolume/restVolume,kinetic,recoveries,finite:p.every(Number.isFinite),minY,maxDent,time:simTime};}
+ get diagnostics(){let minY=Infinity,maxDent=0,kinetic=0;for(let i=0;i<count;i++){const k=i*3;minY=Math.min(minY,p[k+1]);if(i>=layerSize*4)maxDent=Math.max(maxDent,initial[k+1]-p[k+1]);kinetic+=.005*nodeMass[i]*(vel[k]**2+vel[k+1]**2+vel[k+2]**2);}return {nodes:count,tetrahedra:tetList.length,surfaceTriangles:surface.length/3,volumeRatio:totalVolume/restVolume,kinetic,recoveries,finite:p.every(Number.isFinite),minY,maxDent,time:simTime};}
 };
 }

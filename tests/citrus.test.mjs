@@ -21,10 +21,10 @@ test('equal and opposite takeoff reaction reaches the soft body',()=>{
   assert.notDeepEqual(Array.from(loaded.jelly.positions),Array.from(control.jelly.positions));
   assert.ok(loaded.jelly.diagnostics.kinetic>control.jelly.diagnostics.kinetic);
 });
-test('repeated landings remain bounded at light/soft and heavy/firm settings',()=>{
-  for(const [mass,firmness,damping]of [[.008,0,0],[.04,1,1]]){
-    const w=new CitrusPlayground();w.mass=mass;w.jelly.setTuning(firmness,damping);
-    for(let i=0;i<960;i++){if(i%240===0)w.requestJump();w.step();assert.ok(w.actor.y<3&&w.actor.y>=.06);}
+test('repeated landings and jelly taps remain bounded at weight, firmness and rebound extremes',()=>{
+  for(const [mass,firmness,damping,restitution]of [[.008,0,0,0],[.04,1,1,.6]]){
+    const w=new CitrusPlayground();w.mass=mass;w.restitution=restitution;w.jelly.setTuning(firmness,damping);
+    for(let i=0;i<960;i++){if(i%240===0)w.requestJump();if(i%240===120)w.bounceJelly();w.step();assert.ok(w.actor.y<3&&w.actor.y>=.06);}
     assert.equal(w.jelly.diagnostics.finite,true);assert.equal(w.jelly.diagnostics.recoveries,0);assert.ok(w.jelly.diagnostics.volumeRatio>.9&&w.jelly.diagnostics.volumeRatio<1.1);
   }
 });
@@ -35,6 +35,36 @@ test('walking off the edge falls onto the floor and reset restores the platform'
 test('a dummy on the floor cannot walk through the side of the soft platform',()=>{
   const w=new CitrusPlayground();w.move(1,0);for(let i=0;i<360;i++)w.step();
   w.move(-1,0);for(let i=0;i<330;i++)w.step();assert.equal(w.actor.support,'floor');assert.ok(w.actor.x>1.2);
+});
+test('standing weight compresses the jelly more for a heavy dummy and reports its support load',()=>{
+  const heights=[];
+  for(const mass of [.008,.04]){
+    const w=new CitrusPlayground();w.mass=mass;for(let i=0;i<360;i++)w.step();heights.push(w.actor.y);
+    assert.ok(Math.abs(w.contact.load-1)<.1);assert.ok(w.contact.count>0);
+    assert.ok(Math.abs(w.jelly.nodeMass.reduce((a,b)=>a+b,0)-.42)<1e-7);
+    assert.equal(w.jelly.diagnostics.recoveries,0);
+  }
+  assert.ok(heights[0]>heights[1]+.002);
+});
+test('a tap applied only to the jelly launches the dummy, with a smaller rise for a heavier dummy',()=>{
+  const rises=[];
+  for(const mass of [.008,.04]){
+    const w=new CitrusPlayground();w.mass=mass;for(let i=0;i<240;i++)w.step();
+    const standing=w.actor.y,before={...w.actor};assert.equal(w.bounceJelly(),true);assert.deepEqual(w.actor,before);
+    assert.equal(w.bounceJelly(),false,'rapid repeat taps are rate limited');
+    let peak=standing,airborne=false;
+    for(let i=0;i<360;i++){w.step();peak=Math.max(peak,w.actor.y);airborne||=w.actor.support==='air';}
+    assert.ok(airborne);assert.equal(w.jumps,0);assert.equal(w.jellyBounces,1);assert.ok(peak>standing+.04);
+    assert.equal(w.jelly.diagnostics.recoveries,0);assert.equal(w.actor.support,'jelly');rises.push(peak-standing);
+    w.reset();assert.equal(w.contact.load,0);assert.equal(w.peakLoad,0);assert.equal(w.jellyBounces,0);
+  }
+  assert.ok(rises[0]>rises[1]*1.5);
+});
+test('a retreating surface releases its support instead of pulling the dummy down',()=>{
+  const w=new CitrusPlayground();for(let i=0;i<240;i++)w.step();const y=w.actor.y,vy=w.actor.vy;
+  w.jelly.impulse(w.actor.x,w.actor.z,-.2,.5);w.step();
+  assert.equal(w.actor.support,'air');assert.equal(w.contact.count,0);
+  assert.ok(Math.abs(w.actor.vy-(vy-9.81/120))<1e-8);assert.ok(w.actor.y>y-.003);
 });
 test('the compact character has the source rig and only the five needed animations',async()=>{
   const fs=await import('node:fs/promises'),b=await fs.readFile(new URL('../citrus/assets/character.glb',import.meta.url));

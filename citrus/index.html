@@ -2,23 +2,25 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f0e8"><title>Citrus / Little Leaps</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23d77531'/%3E%3Ccircle cx='20' cy='20' r='13' fill='%23f5b14a'/%3E%3C/svg%3E"><link rel="stylesheet" href="style.css"></head>
 <body>
-<canvas id="scene" tabindex="0" aria-label="Tiny character on a soft citrus platform. Arrow keys or W A S D move. Space jumps. Drag the jelly to stretch it, or empty space to orbit."></canvas>
+<canvas id="scene" tabindex="0" aria-label="Tiny character on a soft citrus platform. Arrow keys or W A S D move. Space jumps. B taps the jelly upward to lift the character. Drag the jelly to stretch it, or empty space to orbit."></canvas>
 <header><a class="brand" href="./">CITRUS <span>/ LITTLE LEAPS</span></a><a class="back" href="../">SECOND Watch Lab ↗</a></header>
 <section class="intro"><p class="eyebrow">A SOFT PLACE TO LAND.</p><h1>Tiny jump.<br> <em>Big wobble.</em></h1><p class="description">One little dummy.<br>One very squishy slice.</p><span class="status"><i id="status-dot"></i><span id="status">Preparing the playground</span></span></section>
 <aside class="panel" aria-label="Playground controls">
 <div class="panel-top"><span class="eyebrow">YOUR LITTLE PLAYGROUND</span><span id="actor-state">READY</span></div>
 <button class="jump primary" id="jump">Jump <span>SPACE ↗</span></button>
 <p class="hint">W A S D or arrows to move.<br>Drag the flesh to pull it. Drag empty space to orbit.</p>
-<div class="utility"><button id="reset">Reset ↺</button><button id="pause" aria-pressed="false">Pause Ⅱ</button><button id="nudge">Wobble</button></div>
+<div class="utility"><button id="reset">Reset ↺</button><button id="pause" aria-pressed="false">Pause Ⅱ</button><button id="nudge">Wobble</button><button id="bounce" title="B — tap the jelly upward; the surface lifts the dummy">Bounce jelly ↑</button></div>
+<div class="contact-readout"><span>CONTACT LOAD <output id="contact-load">0.0× weight</output></span><small id="contact-detail">No foot contact</small></div>
 <details id="tuning"><summary>Feel of the jelly <span>＋</span></summary><div class="tuning-fields">
 <label for="firmness">Firmness <output id="firmness-value">45%</output></label><input id="firmness" type="range" min="0" max="100" value="45">
 <label for="damping">Damping <output id="damping-value">35%</output></label><input id="damping" type="range" min="0" max="100" value="35">
 <label for="mass">Dummy weight <output id="mass-value">20 g</output></label><input id="mass" type="range" min="8" max="40" value="20">
+<label for="rebound">Rebound <output id="rebound-value">18%</output></label><input id="rebound" type="range" min="0" max="60" value="18">
 <div class="presets" role="group" aria-label="Citrus variety"><button data-preset="orange" aria-pressed="true">Orange</button><button data-preset="lemon" aria-pressed="false">Lemon</button><button data-preset="ruby" aria-pressed="false">Ruby</button></div>
-<div class="options"><label><input id="slow" type="checkbox">¼ speed</label><label><input id="mesh" type="checkbox">Show mesh</label></div>
+<div class="options"><label><input id="slow" type="checkbox">¼ speed</label><label><input id="mesh" type="checkbox">Show mesh</label><label><input id="forces" type="checkbox" checked>Show forces</label></div>
 </div></details>
 </aside>
-<footer><span>SMALL FEET. REAL DEFORMATION.</span><div class="metrics"><span>LANDINGS <b id="landings">0</b></span><span>VOLUME <b id="volume">100.0%</b></span><span>DUMMY HEIGHT <b>8 CM</b></span></div><a href="https://quaternius.itch.io/universal-animation-library" target="_blank" rel="noreferrer">Character / Quaternius · CC0 ↗</a></footer>
+<footer><span>SMALL FEET. REAL DEFORMATION.</span><div class="metrics"><span>LANDINGS <b id="landings">0</b></span><span>VOLUME <b id="volume">100.0%</b></span><span>DUMMY HEIGHT <b>8 CM</b></span><span>PEAK LOAD <b id="peak-load">0.0×</b></span></div><a href="https://quaternius.itch.io/universal-animation-library" target="_blank" rel="noreferrer">Character / Quaternius · CC0 ↗</a></footer>
 <nav class="touch-controls" aria-label="Touch movement controls"><div class="dpad"><button data-move="up" aria-label="Move forward">↑</button><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move backward">↓</button><button data-move="right" aria-label="Move right">→</button></div><button id="touch-jump" class="primary">Jump ↗</button></nav>
 <div id="loading" role="status">A little sunshine. A little setup…</div>
 <script type="module" src="app.js"></script>

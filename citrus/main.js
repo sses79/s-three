@@ -5,11 +5,12 @@ import {createLighting} from '../watch/lighting.js';
 import {CitrusPlayground,STEP} from './physics.js';
 import {TinyCharacter} from './character.js';
 import {citrusMaterials} from './material.js';
+import {ForceIndicators} from './forces.js';
 
 const $=id=>document.getElementById(id),canvas=$('scene'),query=new URLSearchParams(location.search);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const world=new CitrusPlayground(),keys=new Set(),raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
-let renderer,scene,camera,controls,character,jellyMesh,wire,geometry,material,ready=false,paused=reduced||query.has('capture'),slow=false;
+let renderer,scene,camera,controls,character,forces,jellyMesh,wire,geometry,material,ready=false,paused=reduced||query.has('capture'),slow=false;
 let accumulator=0,last=0,dragging=null,lastRead=0;
 $('tuning').open=innerWidth>760;
 
@@ -19,11 +20,14 @@ function reset(){world.reset();keys.clear();world.move(0,0);accumulator=0;draggi
 $('jump').onclick=jump;$('touch-jump').onclick=jump;$('reset').onclick=reset;
 $('pause').onclick=()=>{paused=!paused;syncPause();};
 $('nudge').onclick=()=>{world.jelly.impulse(0,.78,-.04);paused=false;syncPause();};
+function bounceJelly(){world.bounceJelly();paused=false;syncPause();canvas.focus({preventScroll:true});}
+$('bounce').onclick=bounceJelly;
 for(const name of ['firmness','damping'])$(name).oninput=()=>{world.jelly.setTuning(Number($('firmness').value)/100,Number($('damping').value)/100);$(name+'-value').textContent=$(name).value+'%';};
 $('mass').oninput=()=>{world.mass=Number($('mass').value)/1000;$('mass-value').textContent=$('mass').value+' g';};
+$('rebound').oninput=()=>{world.restitution=Number($('rebound').value)/100;$('rebound-value').textContent=$('rebound').value+'%';};
 $('slow').onchange=e=>slow=e.target.checked;$('mesh').onchange=e=>{if(wire)wire.visible=e.target.checked;};
 document.querySelectorAll('[data-preset]').forEach(button=>button.onclick=()=>{material?.setPreset(button.dataset.preset);document.querySelectorAll('[data-preset]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));});
-window.addEventListener('keydown',e=>{if(e.target.matches('input,summary'))return;if(e.code==='Space'){e.preventDefault();if(!e.repeat)jump();return;}if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'].includes(e.code)){e.preventDefault();keys.add(e.code);}if(e.code==='KeyR')reset();});
+window.addEventListener('keydown',e=>{if(e.target.matches('input,summary'))return;if(e.code==='Space'){e.preventDefault();if(!e.repeat)jump();return;}if(e.code==='KeyB'&&!e.repeat)bounceJelly();if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'].includes(e.code)){e.preventDefault();keys.add(e.code);}if(e.code==='KeyR')reset();});
 window.addEventListener('keyup',e=>keys.delete(e.code));
 for(const button of document.querySelectorAll('[data-move]')){
   const code={up:'ArrowUp',left:'ArrowLeft',down:'ArrowDown',right:'ArrowRight'}[button.dataset.move];
@@ -51,12 +55,15 @@ function homeCamera(){
 }
 function updateScene(){
   geometry.attributes.position.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingSphere();
-  character.update(world.actor,world.time);controls.update();renderer.render(scene,camera);
+  character.update(world.actor,world.time);controls.update();forces.update(world,$('forces').checked,camera);renderer.render(scene,camera);
+  $('contact-load').textContent=world.contact.load.toFixed(1)+'× weight';
+  $('contact-detail').textContent=world.contact.count?'Jelly supports ↑ · Dummy presses ↓':'No foot contact';
+  $('peak-load').textContent=world.peakLoad.toFixed(1)+'×';
 }
 function diagnostics(){
   const screen=position=>{const p=position.clone().project(camera);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};};
   return {ready,paused,slow,dragging:!!dragging,backend:renderer?.backend.isWebGPUBackend?'WebGPU':'WebGL2',...world.diagnostics,
-    animation:character?.clip,screenActor:screen(new THREE.Vector3(world.actor.x,world.actor.y+.35,world.actor.z)),screenJelly:screen(new THREE.Vector3(.55,.54,.9))};
+    animation:character?.clip,forcesVisible:forces.group.visible,screenActor:screen(new THREE.Vector3(world.actor.x,world.actor.y+.35,world.actor.z)),screenJelly:screen(new THREE.Vector3(.55,.54,.9))};
 }
 async function init(){
   renderer=new THREE.WebGPURenderer({canvas,antialias:true,alpha:true,forceWebGL:query.has('webgl')});await renderer.init();
@@ -77,10 +84,11 @@ async function init(){
   material=citrusMaterials();jellyMesh=new THREE.Mesh(geometry,material.materials);jellyMesh.castShadow=true;jellyMesh.receiveShadow=true;scene.add(jellyMesh);
   wire=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color:'#fff7cf',wireframe:true,transparent:true,opacity:.18,depthWrite:false}));wire.visible=false;scene.add(wire);
   const gltf=await new GLTFLoader().loadAsync('assets/character.glb');character=new TinyCharacter(gltf,scene);
+  forces=new ForceIndicators(scene);
   resize();homeCamera();new ResizeObserver(()=>resize()).observe(canvas);window.addEventListener('resize',homeCamera);
   character.update(world.actor,world.time);await renderer.compileAsync(scene,camera);
   ready=true;$('loading').hidden=true;$('status-dot').classList.add('ready');$('status').textContent=`${renderer.backend.isWebGPUBackend?'WEBGPU':'WEBGL2'} / LITTLE LEAPS`;syncPause();
-  window.citrusPlayground={diagnostics,jump:()=>world.requestJump(),reset,pause:value=>{paused=value;syncPause();},
+  window.citrusPlayground={diagnostics,jump:()=>world.requestJump(),bounceJelly:()=>world.bounceJelly(),reset,pause:value=>{paused=value;syncPause();},
     advance:frames=>{for(let i=0;i<Math.min(600,Math.max(0,frames));i++){movement();world.step();}updateScene();return diagnostics();}};
   window.citrusDiagnostics=diagnostics;
   renderer.setAnimationLoop(now=>{

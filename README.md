@@ -10,18 +10,20 @@ The watch was extracted from [sses79/3d-action](https://github.com/sses79/3d-act
 
 The new [Citrus playground](http://127.0.0.1:5173/citrus/) brings the original Citrus Jelly solver and the Quaternius dummy into one Three.js scene. An 8 cm character can jump on the soft slice: takeoff and landings deform the volume, while the moving surface supports and rebounds the character.
 
-![Tiny dummy jumping on the soft citrus platform](docs/citrus-playground.png)
+![Opposing support forces between the tiny dummy and the soft citrus platform](docs/citrus-playground.png)
 
 - **Space / Jump:** jump from the jelly or floor.
+- **B / Bounce jelly:** tap the jelly upward and let its moving surface launch the dummy, without a jump command.
 - **W A S D / arrows:** move; touch users have a directional pad and jump button.
 - **Drag the flesh:** stretch the jelly. Drag empty space to orbit; scroll or pinch to zoom.
 - **Reset / R:** restore the platform, character, and camera.
 - **Pause, Wobble, ¼ speed, Show mesh:** inspect the motion.
-- **Firmness, damping, dummy weight, Orange/Lemon/Ruby:** explore different responses and looks.
+- **Firmness, damping, dummy weight, rebound, Orange/Lemon/Ruby:** explore different responses and looks.
+- **Show forces:** opposing arrows show jelly support upward and dummy pressure downward. Contact load is about 1× body weight at rest, zero in the air, and higher during landings; the footer retains the peak until Reset.
 
 Reduced motion starts paused. Jump or Wobble resumes play. The playground uses WebGPU with WebGL2 fallback; append `?webgl=1` to test the fallback. Its renderer shares the bundled studio HDRI with SECOND.
 
-`npm run test:citrus` runs real-browser checks for keyboard/touch jumping, deformation, landing, walking, dragging, WebGL2, and the phone layout. Numeric tests cover repeated jumps, weight/firmness extremes, volume preservation, floor support, and side entry. See [source and simulation notes](citrus/source/README.md) for the compact model provenance and contact approximation.
+`npm run test:citrus` runs real-browser checks for keyboard/touch jumping, jelly-only launches, rebound settings, force display, landing, walking, dragging, WebGL2, and the phone layout. Numeric tests cover two-way momentum exchange, friction, restitution, loaded support, repeated jumps, weight/firmness/rebound extremes, volume preservation, floor support, and side entry. See [source and simulation notes](citrus/source/README.md) for the compact model provenance and contact approximation.
 
 ## Run
 
